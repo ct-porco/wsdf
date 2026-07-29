@@ -379,6 +379,10 @@ pub const __MAC_15_6: u32 = 150600;
 pub const __MAC_16_0: u32 = 160000;
 pub const __MAC_26_0: u32 = 260000;
 pub const __MAC_26_1: u32 = 260100;
+pub const __MAC_26_2: u32 = 260200;
+pub const __MAC_26_3: u32 = 260300;
+pub const __MAC_26_4: u32 = 260400;
+pub const __MAC_26_5: u32 = 260500;
 pub const __IPHONE_2_0: u32 = 20000;
 pub const __IPHONE_2_1: u32 = 20100;
 pub const __IPHONE_2_2: u32 = 20200;
@@ -469,6 +473,10 @@ pub const __IPHONE_18_6: u32 = 180600;
 pub const __IPHONE_19_0: u32 = 190000;
 pub const __IPHONE_26_0: u32 = 260000;
 pub const __IPHONE_26_1: u32 = 260100;
+pub const __IPHONE_26_2: u32 = 260200;
+pub const __IPHONE_26_3: u32 = 260300;
+pub const __IPHONE_26_4: u32 = 260400;
+pub const __IPHONE_26_5: u32 = 260500;
 pub const __WATCHOS_1_0: u32 = 10000;
 pub const __WATCHOS_2_0: u32 = 20000;
 pub const __WATCHOS_2_1: u32 = 20100;
@@ -528,6 +536,10 @@ pub const __WATCHOS_11_6: u32 = 110600;
 pub const __WATCHOS_12_0: u32 = 120000;
 pub const __WATCHOS_26_0: u32 = 260000;
 pub const __WATCHOS_26_1: u32 = 260100;
+pub const __WATCHOS_26_2: u32 = 260200;
+pub const __WATCHOS_26_3: u32 = 260300;
+pub const __WATCHOS_26_4: u32 = 260400;
+pub const __WATCHOS_26_5: u32 = 260500;
 pub const __TVOS_9_0: u32 = 90000;
 pub const __TVOS_9_1: u32 = 90100;
 pub const __TVOS_9_2: u32 = 90200;
@@ -587,6 +599,10 @@ pub const __TVOS_18_6: u32 = 180600;
 pub const __TVOS_19_0: u32 = 190000;
 pub const __TVOS_26_0: u32 = 260000;
 pub const __TVOS_26_1: u32 = 260100;
+pub const __TVOS_26_2: u32 = 260200;
+pub const __TVOS_26_3: u32 = 260300;
+pub const __TVOS_26_4: u32 = 260400;
+pub const __TVOS_26_5: u32 = 260500;
 pub const __BRIDGEOS_2_0: u32 = 20000;
 pub const __BRIDGEOS_3_0: u32 = 30000;
 pub const __BRIDGEOS_3_1: u32 = 30100;
@@ -623,6 +639,10 @@ pub const __BRIDGEOS_9_5: u32 = 90500;
 pub const __BRIDGEOS_9_6: u32 = 90600;
 pub const __BRIDGEOS_10_0: u32 = 100000;
 pub const __BRIDGEOS_10_1: u32 = 100100;
+pub const __BRIDGEOS_10_2: u32 = 100200;
+pub const __BRIDGEOS_10_3: u32 = 100300;
+pub const __BRIDGEOS_10_4: u32 = 100400;
+pub const __BRIDGEOS_26_5: u32 = 260500;
 pub const __DRIVERKIT_19_0: u32 = 190000;
 pub const __DRIVERKIT_20_0: u32 = 200000;
 pub const __DRIVERKIT_21_0: u32 = 210000;
@@ -646,6 +666,10 @@ pub const __DRIVERKIT_24_5: u32 = 240500;
 pub const __DRIVERKIT_24_6: u32 = 240600;
 pub const __DRIVERKIT_25_0: u32 = 250000;
 pub const __DRIVERKIT_25_1: u32 = 250100;
+pub const __DRIVERKIT_25_2: u32 = 250200;
+pub const __DRIVERKIT_25_3: u32 = 250300;
+pub const __DRIVERKIT_25_4: u32 = 250400;
+pub const __DRIVERKIT_25_5: u32 = 250500;
 pub const __VISIONOS_1_0: u32 = 10000;
 pub const __VISIONOS_1_1: u32 = 10100;
 pub const __VISIONOS_1_2: u32 = 10200;
@@ -660,6 +684,10 @@ pub const __VISIONOS_2_6: u32 = 20600;
 pub const __VISIONOS_3_0: u32 = 30000;
 pub const __VISIONOS_26_0: u32 = 260000;
 pub const __VISIONOS_26_1: u32 = 260100;
+pub const __VISIONOS_26_2: u32 = 260200;
+pub const __VISIONOS_26_3: u32 = 260300;
+pub const __VISIONOS_26_4: u32 = 260400;
+pub const __VISIONOS_26_5: u32 = 260500;
 pub const MAC_OS_X_VERSION_10_0: u32 = 1000;
 pub const MAC_OS_X_VERSION_10_1: u32 = 1010;
 pub const MAC_OS_X_VERSION_10_2: u32 = 1020;
@@ -734,10 +762,14 @@ pub const MAC_OS_VERSION_15_6: u32 = 150600;
 pub const MAC_OS_VERSION_16_0: u32 = 160000;
 pub const MAC_OS_VERSION_26_0: u32 = 260000;
 pub const MAC_OS_VERSION_26_1: u32 = 260100;
+pub const MAC_OS_VERSION_26_2: u32 = 260200;
+pub const MAC_OS_VERSION_26_3: u32 = 260300;
+pub const MAC_OS_VERSION_26_4: u32 = 260400;
+pub const MAC_OS_VERSION_26_5: u32 = 260500;
 pub const __AVAILABILITY_VERSIONS_VERSION_HASH: u32 = 93585900;
 pub const __AVAILABILITY_VERSIONS_VERSION_STRING: &[u8; 6] = b"Local\0";
 pub const __AVAILABILITY_FILE: &[u8; 23] = b"AvailabilityVersions.h\0";
-pub const __MAC_OS_X_VERSION_MAX_ALLOWED: u32 = 260100;
+pub const __MAC_OS_X_VERSION_MAX_ALLOWED: u32 = 260500;
 pub const __ENABLE_LEGACY_MAC_AVAILABILITY: u32 = 1;
 pub const USE_CLANG_TYPES: u32 = 0;
 pub const __PTHREAD_SIZE__: u32 = 8176;
@@ -958,7 +990,7 @@ pub const G_GINTPTR_MODIFIER: &[u8; 2] = b"l\0";
 pub const G_GINTPTR_FORMAT: &[u8; 3] = b"li\0";
 pub const G_GUINTPTR_FORMAT: &[u8; 3] = b"lu\0";
 pub const GLIB_MAJOR_VERSION: u32 = 2;
-pub const GLIB_MINOR_VERSION: u32 = 86;
+pub const GLIB_MINOR_VERSION: u32 = 88;
 pub const GLIB_MICRO_VERSION: u32 = 1;
 pub const G_HAVE_ISO_VARARGS: u32 = 1;
 pub const G_HAVE_GROWING_STACK: u32 = 0;
@@ -12384,8 +12416,8 @@ pub struct _telldir {
 #[derive(Debug, Copy, Clone)]
 pub struct DIR {
     pub __dd_fd: ::std::os::raw::c_int,
-    pub __dd_loc: ::std::os::raw::c_long,
-    pub __dd_size: ::std::os::raw::c_long,
+    pub __dd_loc: usize,
+    pub __dd_size: usize,
     pub __dd_buf: *mut ::std::os::raw::c_char,
     pub __dd_len: ::std::os::raw::c_int,
     pub __dd_seek: ::std::os::raw::c_long,
@@ -12564,6 +12596,57 @@ extern "C" {
         arg2: *mut *mut *mut dirent,
         arg3: *mut ::std::os::raw::c_void,
         arg4: *mut ::std::os::raw::c_void,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn fdclosedir(arg1: *mut DIR) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn fdscandir(
+        arg1: ::std::os::raw::c_int,
+        arg2: *mut *mut *mut dirent,
+        arg3: ::std::option::Option<
+            unsafe extern "C" fn(arg1: *const dirent) -> ::std::os::raw::c_int,
+        >,
+        arg4: ::std::option::Option<
+            unsafe extern "C" fn(
+                arg1: *mut *const dirent,
+                arg2: *mut *const dirent,
+            ) -> ::std::os::raw::c_int,
+        >,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn fdscandir_b(
+        arg1: ::std::os::raw::c_int,
+        arg2: *mut *mut *mut dirent,
+        arg3: *mut ::std::os::raw::c_void,
+        arg4: *mut ::std::os::raw::c_void,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn scandirat(
+        arg1: ::std::os::raw::c_int,
+        arg2: *const ::std::os::raw::c_char,
+        arg3: *mut *mut *mut dirent,
+        arg4: ::std::option::Option<
+            unsafe extern "C" fn(arg1: *const dirent) -> ::std::os::raw::c_int,
+        >,
+        arg5: ::std::option::Option<
+            unsafe extern "C" fn(
+                arg1: *mut *const dirent,
+                arg2: *mut *const dirent,
+            ) -> ::std::os::raw::c_int,
+        >,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn scandirat_b(
+        arg1: ::std::os::raw::c_int,
+        arg2: *const ::std::os::raw::c_char,
+        arg3: *mut *mut *mut dirent,
+        arg4: *mut ::std::os::raw::c_void,
+        arg5: *mut ::std::os::raw::c_void,
     ) -> ::std::os::raw::c_int;
 }
 extern "C" {
@@ -13673,6 +13756,8 @@ pub type GHookFinalizeFunc =
     ::std::option::Option<unsafe extern "C" fn(hook_list: *mut GHookList, hook: *mut GHook)>;
 pub const GHookFlagMask_G_HOOK_FLAG_ACTIVE: GHookFlagMask = 1;
 pub const GHookFlagMask_G_HOOK_FLAG_IN_CALL: GHookFlagMask = 2;
+pub const GHookFlagMask_G_HOOK_FLAG_RESERVED1: GHookFlagMask = 4;
+pub const GHookFlagMask_G_HOOK_FLAG_RESERVED2: GHookFlagMask = 8;
 pub const GHookFlagMask_G_HOOK_FLAG_MASK: GHookFlagMask = 15;
 pub type GHookFlagMask = ::std::os::raw::c_uint;
 #[repr(C)]
@@ -14853,6 +14938,9 @@ extern "C" {
     pub fn g_get_monotonic_time() -> gint64;
 }
 extern "C" {
+    pub fn g_get_monotonic_time_ns() -> u64;
+}
+extern "C" {
     pub fn g_get_real_time() -> gint64;
 }
 extern "C" {
@@ -15043,6 +15131,7 @@ pub const GUnicodeBreakType_G_UNICODE_BREAK_AKSARA_PRE_BASE: GUnicodeBreakType =
 pub const GUnicodeBreakType_G_UNICODE_BREAK_AKSARA_START: GUnicodeBreakType = 45;
 pub const GUnicodeBreakType_G_UNICODE_BREAK_VIRAMA_FINAL: GUnicodeBreakType = 46;
 pub const GUnicodeBreakType_G_UNICODE_BREAK_VIRAMA: GUnicodeBreakType = 47;
+pub const GUnicodeBreakType_G_UNICODE_BREAK_UNAMBIGUOUS_HYPHEN: GUnicodeBreakType = 48;
 pub type GUnicodeBreakType = ::std::os::raw::c_uint;
 pub const GUnicodeScript_G_UNICODE_SCRIPT_INVALID_CODE: GUnicodeScript = -1;
 pub const GUnicodeScript_G_UNICODE_SCRIPT_COMMON: GUnicodeScript = 0;
@@ -15217,6 +15306,10 @@ pub const GUnicodeScript_G_UNICODE_SCRIPT_SUNUWAR: GUnicodeScript = 168;
 pub const GUnicodeScript_G_UNICODE_SCRIPT_GURUNG_KHEMA: GUnicodeScript = 169;
 pub const GUnicodeScript_G_UNICODE_SCRIPT_KIRAT_RAI: GUnicodeScript = 170;
 pub const GUnicodeScript_G_UNICODE_SCRIPT_OL_ONAL: GUnicodeScript = 171;
+pub const GUnicodeScript_G_UNICODE_SCRIPT_SIDETIC: GUnicodeScript = 172;
+pub const GUnicodeScript_G_UNICODE_SCRIPT_TOLONG_SIKI: GUnicodeScript = 173;
+pub const GUnicodeScript_G_UNICODE_SCRIPT_TAI_YO: GUnicodeScript = 174;
+pub const GUnicodeScript_G_UNICODE_SCRIPT_BERIA_ERFE: GUnicodeScript = 175;
 pub type GUnicodeScript = ::std::os::raw::c_int;
 extern "C" {
     pub fn g_unicode_script_to_iso15924(script: GUnicodeScript) -> guint32;
@@ -17211,6 +17304,17 @@ extern "C" {
         context: *mut GMarkupParseContext,
         line_number: *mut gint,
         char_number: *mut gint,
+    );
+}
+extern "C" {
+    pub fn g_markup_parse_context_get_offset(context: *mut GMarkupParseContext) -> gsize;
+}
+extern "C" {
+    pub fn g_markup_parse_context_get_tag_start(
+        context: *mut GMarkupParseContext,
+        line_number: *mut gsize,
+        char_number: *mut gsize,
+        offset: *mut gsize,
     );
 }
 extern "C" {
@@ -19316,6 +19420,7 @@ pub const GRegexCompileFlags_G_REGEX_FIRSTLINE: GRegexCompileFlags = 262144;
 pub const GRegexCompileFlags_G_REGEX_DUPNAMES: GRegexCompileFlags = 524288;
 pub const GRegexCompileFlags_G_REGEX_NEWLINE_CR: GRegexCompileFlags = 1048576;
 pub const GRegexCompileFlags_G_REGEX_NEWLINE_LF: GRegexCompileFlags = 2097152;
+pub const GRegexCompileFlags_G_REGEX_NEWLINE_RESERVED1: GRegexCompileFlags = 4194304;
 pub const GRegexCompileFlags_G_REGEX_NEWLINE_CRLF: GRegexCompileFlags = 3145728;
 pub const GRegexCompileFlags_G_REGEX_NEWLINE_ANYCRLF: GRegexCompileFlags = 5242880;
 pub const GRegexCompileFlags_G_REGEX_BSR_ANYCRLF: GRegexCompileFlags = 8388608;
@@ -21135,6 +21240,7 @@ pub const GTestSubprocessFlags_G_TEST_SUBPROCESS_DEFAULT: GTestSubprocessFlags =
 pub const GTestSubprocessFlags_G_TEST_SUBPROCESS_INHERIT_STDIN: GTestSubprocessFlags = 1;
 pub const GTestSubprocessFlags_G_TEST_SUBPROCESS_INHERIT_STDOUT: GTestSubprocessFlags = 2;
 pub const GTestSubprocessFlags_G_TEST_SUBPROCESS_INHERIT_STDERR: GTestSubprocessFlags = 4;
+pub const GTestSubprocessFlags_G_TEST_SUBPROCESS_INHERIT_DESCRIPTORS: GTestSubprocessFlags = 8;
 pub type GTestSubprocessFlags = ::std::os::raw::c_uint;
 extern "C" {
     pub fn g_test_trap_subprocess(
@@ -21153,6 +21259,9 @@ extern "C" {
 }
 extern "C" {
     pub fn g_test_trap_has_passed() -> gboolean;
+}
+extern "C" {
+    pub fn g_test_trap_has_skipped() -> gboolean;
 }
 extern "C" {
     pub fn g_test_trap_reached_timeout() -> gboolean;

@@ -1,6 +1,85 @@
 use super::{protocol::*, types::*};
 use epan_sys;
-use std::ffi::{c_char, c_int};
+use std::{
+    ffi::{c_char, c_int, c_void},
+    fmt::Debug,
+    hash::Hash,
+    marker::PhantomData,
+    ptr::NonNull,
+};
+
+pub trait DissectorTrait {
+    /// C type containing extra data to pass to a dissector.
+    ///
+    /// Type the upstream dissector uses.
+    type CData;
+
+    /// Type containing extra data to pass to a dissector.
+    ///
+    /// May be a Rust definition of a type which can be converted to `Self::CData`.
+    /// If such a type does not exist, this may be the same as `Self::CData`.
+    type Data: Into<Self::CData>;
+
+    /// Returns a pointer to the underlying dissector handle
+    fn as_ptr(&self) -> epan_sys::dissector_handle_t;
+
+    /// Calls the dissector using a handle.
+    ///
+    /// Returns an error if the protocol is disabled or another error occurred
+    /// while the dissector was running. Otherwise, if the handle refers to a new-style
+    /// dissector, calls the dissector and returns its return value; otherwise
+    /// calls it and returns the length of the provided `Tvb` argument.
+    fn call(
+        &self,
+        tvb: &Tvb,
+        pinfo: &PacketInfo,
+        tree: &Tree,
+    ) -> Result<i32, DissectorHandleError> {
+        let result = unsafe {
+            epan_sys::call_dissector(self.as_ptr(), tvb.as_ptr(), pinfo.ptr, tree.current_node)
+        };
+
+        match result {
+            r if r < 0 => Err(DissectorHandleError::Unspecified(result)),
+            0 => Err(DissectorHandleError::Disabled),
+            _ => Ok(result),
+        }
+    }
+
+    /// Calls the dissector, passing additional dissector parameters inside `dissector_data`.
+    ///
+    /// The type of the `dissector_data` argument is specific to the dissector being
+    /// called.
+    ///
+    /// Returns an error if the protocol is disabled or another error occurred
+    /// while the dissector was running. Otherwise, if the handle refers to a new-style
+    /// dissector, calls the dissector and returns its return value; otherwise
+    /// calls it and returns the length of the provided `Tvb` argument.
+    fn call_with_data(
+        &self,
+        tvb: &Tvb,
+        pinfo: &PacketInfo,
+        tree: &Tree,
+        dissector_data: Self::Data,
+    ) -> Result<i32, DissectorHandleError> {
+        let dissector_data: Self::CData = dissector_data.into();
+        let result = unsafe {
+            epan_sys::call_dissector_with_data(
+                self.as_ptr(),
+                tvb.as_ptr(),
+                pinfo.ptr,
+                tree.current_node,
+                core::ptr::from_ref(&dissector_data) as *mut c_void,
+            )
+        };
+
+        match result {
+            r if r < 0 => Err(DissectorHandleError::Unspecified(result)),
+            0 => Err(DissectorHandleError::Disabled),
+            _ => Ok(result),
+        }
+    }
+}
 
 /// A packet dissector implementation using the new TvbRange API.
 ///
@@ -9,7 +88,8 @@ use std::ffi::{c_char, c_int};
 ///
 /// # Example
 ///
-/// ```rust
+/// ```rust,no_run
+/// use wsdf::wireshark::Dissector;
 /// let dissector = Dissector::new(|tree, tvb| {
 ///     // Create ranges for data access. Analogous to Lua API tvb(offset, length)
 ///     // Reference: wslua_tvb.c Tvb_range()
@@ -28,8 +108,10 @@ use std::ffi::{c_char, c_int};
 ///     Ok(tvb.reported_length()) // Return consumed bytes
 /// });
 /// ```
+type DissectorFn = Box<dyn Fn(&mut Tree, Tvb) -> Result<i32, Box<dyn std::error::Error>>>;
+
 pub struct Dissector {
-    inner: Box<dyn Fn(&mut Tree, Tvb) -> Result<i32, Box<dyn std::error::Error>>>,
+    inner: DissectorFn,
 }
 
 impl Dissector {
@@ -48,22 +130,9 @@ impl Dissector {
         proto_tree: *mut epan_sys::proto_tree,
         protocol: &Protocol,
     ) -> c_int {
-        // There's not a guarantee that the proto_tree that will be passed in by wireshark is
-        // not NULL. In the case that it is null, it is used for other validation purposes in
-        // wireshark so while you can still add expert info, it seems advisable to not build
-        // a tree at all. More details can be found in 2.12 Optimizations in README.dissectors
-        if proto_tree.is_null() {
-            return epan_sys::tvb_captured_length(tvb) as i32;
-        }
-
         let tree_result = Tree::new(protocol, pinfo, proto_tree, tvb, 0);
         match tree_result {
-            Ok((mut tree, tvb_wrapper)) => {
-                match (self.inner)(&mut tree, tvb_wrapper) {
-                    Ok(consumed) => consumed,
-                    Err(_) => 0, // Error in dissection
-                }
-            }
+            Ok((mut tree, tvb_wrapper)) => (self.inner)(&mut tree, tvb_wrapper).unwrap_or_default(),
             Err(_) => 0, // Error creating tree
         }
     }
@@ -166,6 +235,9 @@ impl Tvb {
     }
 
     /// Create child TVB with new data
+    ///
+    /// # Safety
+    /// `data` must be valid for `length` bytes and outlive the returned `Tvb`.
     pub unsafe fn new_child_real_data(
         &self,
         data: *const u8,
@@ -186,7 +258,10 @@ impl Tvb {
         }
     }
 
-    /// Get raw pointer to data (unsafe)
+    /// Get raw pointer to data at `offset` for `length` bytes.
+    ///
+    /// # Safety
+    /// `offset` and `length` must be within the bounds of this TVB.
     pub unsafe fn get_ptr(&self, offset: i32, length: i32) -> *const u8 {
         epan_sys::tvb_get_ptr(self.ptr, offset, length)
     }
@@ -279,6 +354,24 @@ impl TvbRange {
         }
     }
 
+    /// Extract 24 bits into a 32-bit unsigned integer with endianness
+    pub fn uint24(&self, encoding: Encoding) -> Result<u32, TvbError> {
+        if self.length < 3 {
+            return Err(TvbError::InvalidLength {
+                expected: 3,
+                actual: self.length,
+            });
+        }
+        unsafe {
+            let value = match encoding {
+                Encoding::BigEndian => epan_sys::tvb_get_ntoh24(self.tvb.ptr, self.offset),
+                Encoding::LittleEndian => epan_sys::tvb_get_letoh24(self.tvb.ptr, self.offset),
+                _ => return Err(TvbError::InvalidEncoding),
+            };
+            Ok(value)
+        }
+    }
+
     /// Extract uint32 with endianness
     pub fn uint32(&self, encoding: Encoding) -> Result<u32, TvbError> {
         if self.length < 4 {
@@ -302,7 +395,14 @@ impl TvbRange {
     pub fn bytes(&self) -> Vec<u8> {
         unsafe {
             let ptr = epan_sys::tvb_get_ptr(self.tvb.ptr, self.offset, self.length);
-            std::slice::from_raw_parts(ptr, self.length as usize).to_vec()
+            // `tvb_get_ptr` may return `null` if the specified length is zero.
+            // `from_raw_parts` will fail if the pointer argument is `null`, so check
+            // it's validity first and return a default `Vec` it's invalid.
+            if ptr.is_null() || !ptr.is_aligned() {
+                Vec::default()
+            } else {
+                std::slice::from_raw_parts(ptr, self.length as usize).to_vec()
+            }
         }
     }
 
@@ -337,6 +437,62 @@ impl TvbRange {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct Address {
+    inner: epan_sys::address,
+}
+
+impl Address {
+    pub fn new(address: epan_sys::address) -> Self {
+        Self { inner: address }
+    }
+
+    pub fn to_bytes(&self) -> Result<Vec<u8>, AddressError> {
+        let length: u32 = self.inner.len.try_into()?;
+        let mut buffer = vec![0u8; length as usize];
+
+        let copy_length = unsafe {
+            epan_sys::address_to_bytes(std::ptr::from_ref(&self.inner), buffer.as_mut_ptr(), length)
+        };
+
+        if copy_length == length {
+            Ok(buffer)
+        } else {
+            Err(AddressError::CopyFailed)
+        }
+    }
+}
+
+impl Hash for Address {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.inner.type_.hash(state);
+        self.inner.data.hash(state);
+        self.inner.len.hash(state);
+    }
+}
+
+impl PartialEq for Address {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner.type_ == other.inner.type_
+            && self.inner.len == other.inner.len
+            && (self.inner.len == 0
+                || (self.inner.data.is_null() && other.inner.data.is_null())
+                || (!self.inner.data.is_null()
+                    && self.inner.data.is_aligned()
+                    && !other.inner.data.is_null()
+                    && other.inner.data.is_aligned()
+                    && unsafe {
+                        std::slice::from_raw_parts(
+                            self.inner.data as *const u8,
+                            self.inner.len as usize,
+                        ) == std::slice::from_raw_parts(
+                            other.inner.data as *const u8,
+                            other.inner.len as usize,
+                        )
+                    }))
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct PacketInfo {
     ptr: *mut epan_sys::_packet_info,
@@ -345,7 +501,8 @@ impl PacketInfo {
     pub fn new(ptr: *mut epan_sys::_packet_info) -> Self {
         Self { ptr }
     }
-    // This raw pointer is managed by the block allocator of wmem
+    /// # Safety
+    /// Caller must ensure `self.ptr` points to a live `packet_info` with a valid `pool`.
     pub unsafe fn alloc_string(&self, s: &str) -> *const c_char {
         let c_str = std::ffi::CString::new(s).expect("msg");
         unsafe {
@@ -355,6 +512,8 @@ impl PacketInfo {
             ptr
         }
     }
+    /// # Safety
+    /// Caller must ensure `self.ptr` points to a live `packet_info` with a valid `pool`.
     pub unsafe fn alloc_bytes(&self, bytes: &[u8]) -> *mut u8 {
         unsafe {
             let ptr = epan_sys::wmem_alloc((*self.ptr).pool, bytes.len()) as *mut u8;
@@ -374,9 +533,45 @@ impl PacketInfo {
             epan_sys::col_clear((*self.ptr).cinfo, col as i32);
         }
     }
+    /// # Safety
+    /// `self.ptr` and `tvb` must be valid for the duration of the call.
     pub unsafe fn add_data_source(&self, tvb: &Tvb, name: &str) {
         let name = self.alloc_string(name);
         epan_sys::add_new_data_source(self.ptr, tvb.as_ptr(), name);
+    }
+    pub fn set_fragmented(&self, fragmented: bool) {
+        unsafe { (*self.ptr).fragmented = fragmented }
+    }
+    pub fn fd_visited(&self) -> bool {
+        match unsafe { (*self.ptr).fd.as_ref() } {
+            Some(frame_data) => frame_data.visited() > 0,
+            None => panic!("frame data point is NULL"),
+        }
+    }
+    pub fn set_fd_visited(&self, value: bool) {
+        match unsafe { (*self.ptr).fd.as_mut() } {
+            Some(frame_data) => {
+                let value = if value { 1 } else { 0 };
+                frame_data.set_visited(value);
+            }
+            None => panic!("frame data point is NULL"),
+        }
+    }
+
+    pub fn dl_src(&'_ self) -> Address {
+        Address::new(unsafe { (*self.ptr).dl_src })
+    }
+
+    pub fn dl_dst(&'_ self) -> Address {
+        Address::new(unsafe { (*self.ptr).dl_dst })
+    }
+
+    pub fn src(&'_ self) -> Address {
+        Address::new(unsafe { (*self.ptr).src })
+    }
+
+    pub fn dst(&'_ self) -> Address {
+        Address::new(unsafe { (*self.ptr).dst })
     }
 }
 
@@ -386,8 +581,8 @@ impl PacketInfo {
 pub struct Tree<'a> {
     protocol: &'a Protocol,
     pub pinfo: PacketInfo,
-    current_node: *mut epan_sys::proto_node, // The subtree for adding children to
-    current_item: *mut epan_sys::proto_item, // The item itself
+    pub(crate) current_node: *mut epan_sys::proto_node, // The subtree for adding children to
+    current_item: *mut epan_sys::proto_item,            // The item itself
 }
 
 impl<'a> Tree<'a> {
@@ -409,12 +604,6 @@ impl<'a> Tree<'a> {
             epan_sys::ENC_NA,
         );
 
-        if item.is_null() {
-            return Err(TreeError::AddItemFailed(
-                "Failed to create root item".into(),
-            ));
-        }
-
         let ett_handle = protocol
             .get_ett_handle(ROOT_ETT_ID)
             .ok_or(TreeError::EttNotFound(format!(
@@ -424,12 +613,6 @@ impl<'a> Tree<'a> {
 
         // The actual subtree for display
         let current = epan_sys::proto_item_add_subtree(item, ett_handle);
-
-        if current.is_null() {
-            return Err(TreeError::InvalidSubtreeOperation(
-                "Failed to create root subtree".into(),
-            ));
-        }
 
         let tree = Self {
             protocol,
@@ -465,13 +648,6 @@ impl<'a> Tree<'a> {
                 range.length,
                 epan_sys::ENC_NA,
             );
-
-            if item.is_null() {
-                return Err(TreeError::AddItemFailed(format!(
-                    "Failed to create item for field '{}'",
-                    field_id
-                )));
-            }
 
             // Get the field's ETT for creating subtree (or use a default)
             let ett_handle = self
@@ -521,13 +697,6 @@ impl<'a> Tree<'a> {
                 encoding.to_u32(),
             );
 
-            if item.is_null() {
-                return Err(TreeError::AddItemFailed(format!(
-                    "Failed to create item for field '{}'",
-                    field_id
-                )));
-            }
-
             // Get the field's ETT for creating subtree
             let ett_handle = self
                 .protocol
@@ -572,13 +741,6 @@ impl<'a> Tree<'a> {
                 epan_sys::ENC_NA,
             );
 
-            if item.is_null() {
-                return Err(TreeError::AddItemFailed(format!(
-                    "Failed to create item for field '{}'",
-                    field_id
-                )));
-            }
-
             Ok(TreeItem::new(item, self.pinfo))
         }
     }
@@ -610,13 +772,6 @@ impl<'a> Tree<'a> {
                 range.length,
                 encoding.to_u32(),
             );
-
-            if item.is_null() {
-                return Err(TreeError::AddItemFailed(format!(
-                    "Failed to create item for field '{}'",
-                    field_id
-                )));
-            }
 
             Ok(TreeItem::new(item, self.pinfo))
         }
@@ -704,6 +859,49 @@ impl<'a> Tree<'a> {
             Ok(next_tvb)
         }
     }
+
+    /// Returns a reference to this tree's Protocol
+    pub fn protocol(&self) -> &Protocol {
+        self.protocol
+    }
+
+    pub fn process_reassembled_data(
+        &self,
+        tvb_range: TvbRange,
+        name: &'static str,
+        fd_head: Option<FragmentHead>,
+        update_col_infop: Option<bool>,
+    ) -> Option<Tvb> {
+        let fd_head = match fd_head {
+            Some(fd_head) => fd_head.ptr.as_ptr(),
+            None => core::ptr::null_mut(),
+        };
+
+        let update_col_infop = match update_col_infop {
+            Some(update_col_infop) => core::ptr::from_ref(&update_col_infop) as *mut bool,
+            None => core::ptr::null_mut(),
+        };
+
+        // Creating fragment_items in two steps like this ensures the values pointed to by
+        // the inner fields of `epan_sys::fragment_items` are valid until the end of this block.
+        let mut fragment_items = self.protocol.get_fragment_items()?;
+        let mut items: FragmentItems = (&mut fragment_items).into();
+
+        let new_tvb = unsafe {
+            epan_sys::process_reassembled_data(
+                tvb_range.tvb.ptr,
+                tvb_range.offset,
+                self.pinfo.ptr,
+                to_c_str(name),
+                fd_head,
+                items.as_ptr(),
+                update_col_infop,
+                self.current_node,
+            )
+        };
+
+        NonNull::new(new_tvb).map(|inner| Tvb::new(inner.as_ptr()))
+    }
 }
 
 /// TreeItem represents a single protocol item in the tree
@@ -745,5 +943,112 @@ impl TreeItem {
     /// Internal getter for FFI
     pub(crate) fn as_ptr(&self) -> *mut epan_sys::proto_item {
         self.ptr
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct FragmentHead {
+    ptr: NonNull<epan_sys::fragment_head>,
+}
+
+#[derive(Debug)]
+pub struct ReassemblyTable<T> {
+    inner: epan_sys::reassembly_table,
+    type_phantom: PhantomData<T>,
+}
+
+impl<T> ReassemblyTable<T> {
+    pub fn init(reassembly_table_functions: &epan_sys::reassembly_table_functions) -> Self {
+        let mut reassembly_table = epan_sys::reassembly_table {
+            fragment_table: std::ptr::null_mut(),
+            reassembled_table: std::ptr::null_mut(),
+            temporary_key_func: None,
+            persistent_key_func: None,
+            free_temporary_key_func: None,
+        };
+
+        unsafe {
+            epan_sys::reassembly_table_init(
+                std::ptr::from_mut(&mut reassembly_table),
+                std::ptr::from_ref(reassembly_table_functions),
+            );
+        }
+
+        Self {
+            inner: reassembly_table,
+            type_phantom: PhantomData,
+        }
+    }
+
+    pub fn fragment_add_seq_check(
+        &mut self,
+        tvb: &TvbRange,
+        offset: i32,
+        pinfo: &PacketInfo,
+        id: u32,
+        data: Option<&T>,
+        frag_number: u32,
+        more_frags: bool,
+    ) -> Option<FragmentHead> {
+        let data = match data {
+            Some(data) => std::ptr::from_ref(data),
+            None => std::ptr::null(),
+        };
+
+        let fragment_head = unsafe {
+            epan_sys::fragment_add_seq_check(
+                std::ptr::from_mut(&mut self.inner),
+                tvb.tvb.as_ptr(),
+                offset,
+                pinfo.ptr,
+                id,
+                data as *const c_void,
+                frag_number,
+                tvb.length() as u32,
+                more_frags,
+            )
+        };
+
+        NonNull::new(fragment_head).map(|ptr| FragmentHead { ptr })
+    }
+
+    pub fn fragment_add_seq_offset(
+        &mut self,
+        pinfo: &PacketInfo,
+        id: u32,
+        data: Option<&T>,
+        fragment_offset: u32,
+    ) {
+        let data = match data {
+            Some(data) => std::ptr::from_ref(data),
+            None => std::ptr::null(),
+        };
+
+        unsafe {
+            epan_sys::fragment_add_seq_offset(
+                std::ptr::from_mut(&mut self.inner),
+                pinfo.ptr,
+                id,
+                data as *const c_void,
+                fragment_offset,
+            );
+        }
+    }
+}
+
+impl<T> Drop for ReassemblyTable<T> {
+    fn drop(&mut self) {
+        unsafe { epan_sys::reassembly_table_destroy(std::ptr::from_mut(&mut self.inner)) }
+    }
+}
+
+// Returns a dissector reference by name if it exists; otherwise returns `None`.
+pub fn find_dissector(name: &str) -> Option<epan_sys::dissector_handle_t> {
+    let name = std::ffi::CString::new(name).unwrap();
+    let handle = unsafe { epan_sys::find_dissector(name.as_ptr()) };
+    if handle.is_null() {
+        None
+    } else {
+        Some(handle)
     }
 }

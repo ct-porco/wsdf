@@ -1,16 +1,14 @@
-use std::ffi::c_char;
+use std::{ffi::c_char, num::TryFromIntError};
 
 pub fn to_c_str(s: &str) -> *const c_char {
     // +1 for null terminator
     let size = s.len() + 1;
-    let c_str = unsafe {
+    unsafe {
         let ptr = epan_sys::wmem_alloc(epan_sys::wmem_epan_scope(), size) as *mut c_char;
         ptr.copy_from(s.as_ptr() as *const c_char, s.len());
         *ptr.add(s.len()) = 0;
         ptr
-    };
-
-    c_str
+    }
 }
 
 pub enum DissectorDecodeFrom {
@@ -153,6 +151,7 @@ pub enum FieldDisplay {
     AbsoluteTimeNtpUtc,
     AbsoluteTimeUnix,
     BaseStrWsp,
+    Boolean(u32),
 }
 
 impl FieldDisplay {
@@ -182,6 +181,34 @@ impl FieldDisplay {
             FieldDisplay::AbsoluteTimeNtpUtc => epan_sys::field_display_e_ABSOLUTE_TIME_NTP_UTC,
             FieldDisplay::AbsoluteTimeUnix => epan_sys::field_display_e_ABSOLUTE_TIME_UNIX,
             FieldDisplay::BaseStrWsp => epan_sys::field_display_e_BASE_STR_WSP,
+            FieldDisplay::Boolean(width) => width,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum Framenum {
+    None,
+    Request,
+    Response,
+    Ack,
+    DupAck,
+    RetransPrev,
+    RetransNext,
+    NumTypes,
+}
+
+impl Framenum {
+    pub fn to_u32(self) -> epan_sys::ft_framenum_type_t {
+        match self {
+            Framenum::None => epan_sys::ft_framenum_type_FT_FRAMENUM_NONE,
+            Framenum::Request => epan_sys::ft_framenum_type_FT_FRAMENUM_REQUEST,
+            Framenum::Response => epan_sys::ft_framenum_type_FT_FRAMENUM_RESPONSE,
+            Framenum::Ack => epan_sys::ft_framenum_type_FT_FRAMENUM_ACK,
+            Framenum::DupAck => epan_sys::ft_framenum_type_FT_FRAMENUM_DUP_ACK,
+            Framenum::RetransPrev => epan_sys::ft_framenum_type_FT_FRAMENUM_RETRANS_PREV,
+            Framenum::RetransNext => epan_sys::ft_framenum_type_FT_FRAMENUM_RETRANS_NEXT,
+            Framenum::NumTypes => epan_sys::ft_framenum_type_FT_FRAMENUM_NUM_TYPES,
         }
     }
 }
@@ -552,3 +579,28 @@ pub enum ExpertError {
     AddFailed,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum DissectorHandleError {
+    #[error("Dissector disabled")]
+    Disabled,
+    #[error("Unspecified error code {0}")]
+    Unspecified(i32),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum FragmentItemsError {
+    #[error("Missing protocol ett")]
+    MissingEtt,
+    #[error("Missing protocol field")]
+    MissingField,
+    #[error("Undefined fragment ett")]
+    UndefinedEtt,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum AddressError {
+    #[error("Invalid length: failed to convert `length` to `u32`")]
+    InvalidLength(#[from] TryFromIntError),
+    #[error("Failed to copy address bytes")]
+    CopyFailed,
+}

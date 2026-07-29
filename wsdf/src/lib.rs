@@ -1,7 +1,7 @@
 //! # About wsdf
 //!
 //! WSDF is an ergonomic Rust framework for building Wireshark dissector plugins, with similar
-//! interface to teh lua API, yes providing fast native speeds.
+//! interface to the lua API, yet providing fast native speeds.
 //!
 //! It provides:
 //! - Safe object oriented wrappers around Wireshark's C API
@@ -9,22 +9,26 @@
 //! - Memory-safe packet analysis backed by wireshark's native memory allocators
 //! - Automatic plugin registration & installation
 //!
-//! Keep in mind, as this crate generate "out-of-tree" plugins, meaning they link against
-//! libwireshark rather than being built in the same source, plugins need to be recompiled
-//! for each mamajor.minor Wireshark version release, as Wireshark does not ABI compatibily
-//! acress these versions!
+//! Keep in mind, this crate generates "out-of-tree" plugins, meaning they link against
+//! libwireshark rather than being built in the same source. Plugins need to be recompiled
+//! for each major.minor Wireshark version release, as Wireshark does not ABI ensure compatibility
+//! across these versions!
 //!
 //! ## Quick Start Guide
 //!
-//! ```rust
-//! use wsdf::{plugin, ProtocolBuilder, Dissector, FieldBuilder, FieldType, Encoding};
+//! ```rust,no_run
+//! use wsdf::wireshark::{
+//!     ProtocolBuilder, Dissector, FieldBuilder, FieldType, Encoding,
+//!     Protocol, RegistrationError, ExpertGroup, ExpertSeverity, Plugin
+//! };
+//! use wsdf::plugin;
 //!
 //! // Define your protocol fields
 //! fn build_protocol() -> Result<Protocol, RegistrationError> {
 //!     ProtocolBuilder::new(
 //!         "Example Protocol",  // Protocol name
-//!         "example",          // Protocol abbreviation
-//!         "example"           // Filter name
+//!         "example",           // Protocol abbreviation
+//!         "example"            // Filter name
 //!     )
 //!     .field(
 //!         FieldBuilder::new("version", "Version", "example.version")
@@ -38,9 +42,9 @@
 //!         ExpertSeverity::Error,
 //!         "Malformed packet"
 //!     )
-//!     .dissector(Dissector::new(|tree| {
+//!     .dissector(Dissector::new(|tree, tvb| {
 //!         // Dissection logic here
-//!         0
+//!         Ok(0)
 //!     }))
 //!     .build()
 //! }
@@ -55,7 +59,7 @@
 //!
 //! WSDF uses a layered architecture:
 //!
-//! ```
+//! ```text
 //! +-------------------+
 //! |     User Code     |
 //! +-------------------+
@@ -66,10 +70,10 @@
 //! ```
 //! ## Key Components
 //!
-//! - [`Protocol`] - Defines packet structure and fields
-//! - [`Tree`] - Represents the protocol tree for a packet
-//! - [`Dissector`] - Contains packet analysis logic
-//! - [`Plugin`] - Manages protocol registration with Wireshark
+//! - [`wireshark::protocol`] - Defines packet structure and fields
+//! - [`wireshark::types`] - Defines types supported by Wireshark
+//! - [`wireshark::dissector`] - Contains packet analysis logic
+//! - [`wireshark::plugin`] - Manages protocol registration with Wireshark
 //!
 //! ## Memory Management
 //!
@@ -79,4 +83,3 @@
 
 pub use epan_sys;
 pub mod wireshark;
-
